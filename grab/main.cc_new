@@ -1,0 +1,266 @@
+#include <sys/time.h>
+#include <dc1394/control.h>
+
+#include "klt.h"
+#include "Vgps.h"
+
+#include "opencv2/opencv.hpp"
+#include "opencv2/videoio.hpp"
+
+#define HIGH_SPEED_ID 302662258
+#define LOW_SPEED_ID  235376646
+
+// threads
+sem_t mutex_t1,mutex_t2,mutex_t3;
+sem_t lock_t1,lock_t2,lock_t3;
+
+// images
+cv::Mat img_left;
+std::vector<cv::Mat> img_right_container(4);
+
+// klt tracker init
+int num_points = 10;
+KLT_TrackingContext   tc;
+KLT_FeatureList       fl_fast,fl_slow;
+tc = KLTCreateTrackingContext();
+fl_fast = KLTCreateFeatureList(num_points);
+fl_slow = KLTCreateFeatureList(num_points);
+tc->sequentialMode = TRUE;
+tc->writeInternalImages = FALSE;
+tc->affineConsistencyCheck = -1;
+tc->sequentialMode = true;
+tc->bindToCorner = true;
+tc->patchMode = true;
+tc->mindist = 15;
+tc->writeInternalImages = FALSE;
+tc->window_width = 15;
+tc->window_height = 15;
+tc->affineConsistencyCheck = -1; 
+KLTChangeTCPyramid(tc, 10);
+KLTUpdateTCBorder(tc);
+
+
+//====================================================================================================================================
+void noiseRemove(cv::Mat seg_mask, cv::Mat& seg_mask_noisefree, cv::Rect& box2){
+
+  //[BOUNDING BOX]***********************************************
+  std::vector<std::vector<cv::Point> > contours;
+  std::vector<cv::Vec4i> hierarchy;
+  cv::findContours(seg_mask, contours, hierarchy,
+    CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
+  std::vector<std::vector<cv::Point> > contours_poly(contours.size());
+  std::vector<cv::Rect> box(contours.size());
+  double biggest_box = 0;
+  int big1 = 0, big2 = 0; 
+  for (int j = 0; j < (int)contours.size(); j++){
+    cv::approxPolyDP(cv::Mat(contours[j]), contours_poly[j], 3, true);
+    if (biggest_box < cv::contourArea(contours[j])){
+      biggest_box = cv::contourArea(contours[j]);
+      box[0] = cv::boundingRect(cv::Mat(contours_poly[j]));
+      big1 = j;
+    }
+  }
+  //***********************************************[BOUNDING BOX]
+
+  //[REMOVE NOISE]***********************************************
+  //cv::Mat tmp_img1 = cv::Mat::zeros(seg_mask.size(), CV_8UC1);
+  //cv::Mat tmp_img2 = cv::Mat::zeros(seg_mask.size(), CV_8UC1);
+  //seg_mask.rowRange(box[0].tl().y,box[0].br().y).copyTo(tmp_img1.rowRange(box[0].tl().y,box[0].br().y));
+  //tmp_img1.colRange(box[0].tl().x,box[0].br().x).copyTo(tmp_img2.colRange(box[0].tl().x,box[0].br().x));
+  //seg_mask_noisefree = tmp_img2;
+  //***********************************************[REMOVE NOISE]
+
+  cv::Mat tmp_img3 = cv::Mat::zeros(seg_mask.size(), CV_8UC1);
+  cv::drawContours( tmp_img3, contours, big1, 1, -1);
+  seg_mask_noisefree = tmp_img3;
+  box2 = box[0];
+}
+
+
+//====================================================================================================================================
+void segmentHSVEDIT(cv::Mat src, cv::Mat& seg_mask,
+                    int h_top, int h_bot, int s_top, int s_bot){
+  cv::Mat src_hsv;
+  cv::cvtColor(src,src_hsv,CV_RGB2HSV);
+  std::vector<cv::Mat> splitted_HSV;
+  cv::split(src_hsv, splitted_HSV);
+  cv::Mat seg_mask1 = cv::Mat::zeros(src_hsv.size(), CV_8UC1);
+  cv::Mat seg_mask2 = cv::Mat::zeros(src_hsv.size(), CV_8UC1);
+  cv::Mat seg_mask3 = cv::Mat::zeros(src_hsv.size(), CV_8UC1);
+  cv::Mat seg_mask4 = cv::Mat::zeros(src_hsv.size(), CV_8UC1);
+  // Thresholding
+  seg_mask1 = splitted_HSV[0] <= (h_top);
+  seg_mask2 = splitted_HSV[0] >= (h_bot);
+  seg_mask3 = splitted_HSV[1] <= (s_top);
+  seg_mask4 = splitted_HSV[1] >= (s_bot);
+  if (h_top < h_bot){
+    seg_mask = ((seg_mask1 > 0) | (seg_mask2 > 0)) & (seg_mask3 > 0)
+		& (seg_mask4 > 0);
+  }
+  else{
+    seg_mask = (seg_mask1 > 0) & (seg_mask2 > 0) & (seg_mask3 > 0)
+	        & (seg_mask4 > 0);
+  }
+  seg_mask = seg_mask / 255; //scale to {0,1}
+}
+
+
+//====================================================================================================================================
+void* grab(void* arg)
+{
+  CvCapture *cap1, *cap2, *cam_left, *cam_right;
+  struct timeval start_time, end_time;
+
+  cap1=cvCreateCameraCapture(cv::CAP_FIREWIRE+0);
+  cap2=cvCreateCameraCapture(cv::CAP_FIREWIRE+1);
+
+  if((u_long)cvGetCaptureProperty(cap1,CV_CAP_PROP_GUID)==LOW_SPEED_ID)
+     cam_left=cap1,cam_right=cap2;
+  else
+     cam_left=cap2,cam_right=cap1;
+
+  cvSetCaptureProperty(cam_left,CV_CAP_PROP_FPS,30);
+  cvSetCaptureProperty(cam_right,CV_CAP_PROP_ISO_SPEED,800);
+  cvSetCaptureProperty(cam_right,CV_CAP_PROP_EXPOSURE,200);
+  cvSetCaptureProperty(cam_right,CV_CAP_PROP_GAIN,500);
+  cvSetCaptureProperty(cam_right,CV_CAP_PROP_FPS,120);
+  cvSetCaptureProperty(cam_right,CV_CAP_PROP_MODE,4);
+
+  //cv::namedWindow("left");
+  //cv::namedWindow("right");
+
+  while(1)
+  {
+    gettimeofday(&start_time, NULL);
+
+    for(int i=0;i<10;i++)
+    {
+      cvGrabFrame(cam_left);
+      img_left = cv::cvarrToMat(cvRetrieveFrame(cam_left),true);
+
+      for(int ii=0;ii<4;ii++)
+      {
+        cvGrabFrame(cam_right);
+        img_right_container[ii] = cv::cvarrToMat(cvRetrieveFrame(cam_right),true);
+      }
+    }
+
+    gettimeofday(&end_time, NULL);
+    std::cout << "Exposure : " << cvGetCaptureProperty(cam_right,CV_CAP_PROP_EXPOSURE) << "   ";
+    std::cout << "Gain : " << cvGetCaptureProperty(cam_right,CV_CAP_PROP_GAIN) << "   ";
+    std::cout << 10/ ((end_time.tv_sec - start_time.tv_sec) + 
+                      (end_time.tv_usec- start_time.tv_usec) * 1e-6) 
+	      << " [Hz]"<< std::endl;
+    //cv::imshow("left",im1),
+    //cv::imshow("right",im2);
+    //cvWaitKey(1);
+  }
+
+  return 0;
+}
+
+//====================================================================================================================================
+void* stereo(void* arg)
+{
+
+  int hue_range_obj[2], sat_range_obj[2];
+  hue_range_obj[0] = 34; hue_range_obj[1] = 73;
+  sat_range_obj[0] = 46; sat_range_obj[1] = 181;
+
+  cv::Mat seg_mask_full(480,640,CV_8UC1);
+  cv::Mat seg_mask_box (480,640,CV_8UC1);
+  cv::Rect box_obj;
+
+  char keyPress;
+
+  int width,height,posx,posy;
+
+  while(1)
+  {
+    sem_wait(&mutex_t2);
+
+    segmentHSVEDIT(img_left, seg_mask_full,
+             hue_range_obj[1], hue_range_obj[0],
+             sat_range_obj[1], sat_range_obj[0]);
+    noiseRemove(seg_mask_full,seg_mask_box,box_obj);
+    
+    cv::Mat rgb_tmp = cv::Mat::zeros(480,640, CV_8UC3);
+    img_left.copyTo(rgb_tmp, seg_mask_box);
+    cv::imshow("rgb_o",rgb_tmp); 
+    cv::waitKey(0); 
+
+    width  = box_obj.size().width; 
+    height = box_obj.size().height;
+    posx = box_obj.x; 
+    posy = box_obj.y;
+    IppiRect roi={posx,posy,width,height};
+
+    KLTExtSelectGoodFeatures(tc, (KLT_PixelType*)right_img_container[0].data(), 640, 480, fl_slow, &roi, 2, 2);
+
+    sem_post(&mutex_t2);
+  }
+
+  return 0;
+}
+
+
+//====================================================================================================================================
+void* tracker(void* arg)
+{
+
+  while(1)
+  {
+
+  }
+
+  return 0;
+}
+
+
+//====================================================================================================================================
+int main(int argc, char **argv)
+{
+  // Start multithread
+  pthread_t thread_grab,
+            thread_stereo,
+            thread_tracker;
+
+  sem_init(&lock_t1, 0, 0);
+  sem_init(&lock_t2, 0, 0);
+  sem_init(&lock_t3, 0, 0);
+  sem_init(&mutex_t1, 0, 1);
+  sem_init(&mutex_t2, 0, 1);
+  sem_init(&mutex_t3, 0, 1);
+
+  pthread_attr_t attr;
+  cpu_set_t cpus;
+  pthread_attr_init(&attr);
+
+  CPU_ZERO(&cpus);
+  CPU_SET(1, &cpus);
+  pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpus);
+  pthread_create(&thread_grab, &attr, grab, NULL);
+
+  CPU_ZERO(&cpus);
+  CPU_SET(2, &cpus);
+  pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpus);
+  pthread_create(&thread_stereo, &attr, stereo, NULL);
+
+  CPU_ZERO(&cpus);
+  CPU_SET(3, &cpus);
+  pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpus);
+  pthread_create(&thread_tracker, &attr, tracker, NULL);
+
+  pthread_join(thread_grab, NULL);
+  pthread_join(thread_stereo, NULL);
+  pthread_join(thread_tracker, NULL);
+
+ return 0;
+}
+
+
+
+
+
+
+

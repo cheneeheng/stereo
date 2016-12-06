@@ -1,0 +1,123 @@
+#include <sys/time.h>
+#include <dc1394/control.h>
+
+#include "opencv2/opencv.hpp"
+#include "opencv2/videoio.hpp"
+
+#define HIGH_SPEED_ID 302662258
+#define LOW_SPEED_ID  235376646
+
+// threads
+sem_t mutex_t1,mutex_t2,mutex_t3;
+sem_t lock_t1,lock_t2,lock_t3;
+
+
+int main(int argc, char **argv)
+{
+  // Start multithread
+  pthread_t thread_grab,
+            thread_stereo,
+            thread_tracker;
+
+  sem_init(&lock_t1, 0, 0);
+  sem_init(&lock_t2, 0, 0);
+  sem_init(&lock_t3, 0, 0);
+  sem_init(&mutex_t1, 0, 1);
+  sem_init(&mutex_t2, 0, 1);
+  sem_init(&mutex_t3, 0, 1);
+
+  pthread_attr_t attr;
+  cpu_set_t cpus;
+  pthread_attr_init(&attr);
+
+  CPU_ZERO(&cpus);
+  CPU_SET(1, &cpus);
+  pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpus);
+  pthread_create(&thread_grab, &attr, grab, NULL);
+
+  CPU_ZERO(&cpus);
+  CPU_SET(2, &cpus);
+  pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpus);
+  pthread_create(&thread_stereo, &attr, stereo, NULL);
+
+  CPU_ZERO(&cpus);
+  CPU_SET(3, &cpus);
+  pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpus);
+  pthread_create(&thread_tracker, &attr, tracker, NULL);
+
+ return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+  CvCapture *cap1,*cap2, *left_cam,*right_cam;
+  struct timeval start_time, end_time;
+
+
+  cap1=cvCreateCameraCapture(cv::CAP_FIREWIRE+0);
+  cap2=cvCreateCameraCapture(cv::CAP_FIREWIRE+1);
+  if((u_long)cvGetCaptureProperty(cap1,CV_CAP_PROP_GUID)==LOW_SPEED_ID)
+     left_cam=cap1,right_cam=cap2;
+  else
+     left_cam=cap2,right_cam=cap1;
+  cvSetCaptureProperty(left_cam,CV_CAP_PROP_WHITE_BALANCE_BLUE_U,73);
+  cvSetCaptureProperty(left_cam,CV_CAP_PROP_WHITE_BALANCE_RED_V,60);
+  //cvSetCaptureProperty(left_cam,CV_CAP_PROP_AUTO_EXPOSURE,117);
+  cvSetCaptureProperty(left_cam,CV_CAP_PROP_FPS,30);
+
+  cvSetCaptureProperty(right_cam,CV_CAP_PROP_ISO_SPEED,800);
+  //cvSetCaptureProperty(right_cam,CV_CAP_PROP_WHITE_BALANCE_BLUE_U,547);
+  //cvSetCaptureProperty(right_cam,CV_CAP_PROP_WHITE_BALANCE_RED_V,366);
+  //cvSetCaptureProperty(right_cam,CV_CAP_PROP_CONVERT_RGB,false);
+  //cvSetCaptureProperty(right_cam,CV_CAP_PROP_AUTO_EXPOSURE,164);
+  cvSetCaptureProperty(right_cam,CV_CAP_PROP_EXPOSURE,200);
+  cvSetCaptureProperty(right_cam,CV_CAP_PROP_GAIN,500);
+  cvSetCaptureProperty(right_cam,CV_CAP_PROP_FPS,120);
+  //cvSetCaptureProperty(right_cam,CV_CAP_MODE_GRAY,true);
+  //cvSetCaptureProperty(right_cam,CV_CAP_PROP_MONOCHROME,true);  
+  cvSetCaptureProperty(right_cam,CV_CAP_PROP_MODE,4);
+
+  cv::Mat im1,im2;
+  //cv::namedWindow("left");
+  cv::namedWindow("right");
+
+  //cvGrabFrame(left_cam), 
+  cvGrabFrame(right_cam);
+
+  while(1)
+  {
+    gettimeofday(&start_time, NULL);
+
+    for(int i=0;i<1;i++)
+    {
+      //im1=cv::cvarrToMat(cvRetrieveFrame(left_cam),true);
+      im2=cv::cvarrToMat(cvRetrieveFrame(right_cam),true);
+      //cvGrabFrame(left_cam);
+      cvGrabFrame(right_cam);
+    }
+    gettimeofday(&end_time, NULL);
+    std::cout << "Exposure : " << cvGetCaptureProperty(right_cam,CV_CAP_PROP_EXPOSURE) << "   ";
+    std::cout << "Gain : " << cvGetCaptureProperty(right_cam,CV_CAP_PROP_GAIN) << "   ";
+    std::cout << 1/ ((end_time.tv_sec - start_time.tv_sec) + 
+                      (end_time.tv_usec- start_time.tv_usec) * 1e-6) 
+	      << " [Hz]"<< std::endl;
+     //std::cout << cvGetCaptureProperty(right_cam,CV_CAP_PROP_FPS) << std::endl;
+     //std::vector<cv::Mat> splitted_YUV;
+     //cv::split(im2, splitted_YUV);
+     //cv::imshow("right",splitted_YUV[1]);
+     //cv::imshow("left",im1),
+     cv::imshow("right",im2);
+     cvWaitKey(1);
+  }
+
+  return 0;
+}
