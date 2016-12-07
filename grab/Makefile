@@ -1,7 +1,7 @@
 PROG =   grab
 OBJS =   main.o
 CXXFLAGS = -I/usr/local/include
-LFLAGS   = -L/usr/local/lib -lopencv_core -lopencv_highgui -lopencv_videoio -lopencv_imgcodecs -lopencv_video
+LFLAGS   = -L/usr/local/lib -lopencv_core -lopencv_highgui -lopencv_videoio -lopencv_imgcodecs -lopencv_video -lopencv_features2d -lopencv_calib3d -lopencv_imgproc
 
 all: $(OBJS)
 	$(CXX) -o $(PROG) $(OBJS) $(LFLAGS)

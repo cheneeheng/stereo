@@ -64,10 +64,11 @@ StereoCalib(const vector<string>& imagelist, Size boardSize,bool displayCorners 
         return;
     }
 
+    // Set this to your actual square size
+    const float squareSize = 20.0;  
     const int maxScale = 2;
-    const float squareSize = 1.f;  // Set this to your actual square size
+    
     // ARRAY AND VECTOR STORAGE:
-
     vector<vector<Point2f> > imagePoints[2];
     vector<vector<Point3f> > objectPoints;
     Size imageSize;
@@ -82,7 +83,7 @@ StereoCalib(const vector<string>& imagelist, Size boardSize,bool displayCorners 
     {
         for( k = 0; k < 2; k++ )
         {
-            const string& filename = "./images/" + imagelist[i*2+k];
+            const string& filename = imagelist[i*2+k];
             Mat img = imread(filename, 0);
             if(img.empty())
                 break;
@@ -135,6 +136,7 @@ StereoCalib(const vector<string>& imagelist, Size boardSize,bool displayCorners 
                          TermCriteria(TermCriteria::COUNT+TermCriteria::EPS,
                                       30, 0.01));
         }
+
         if( k == 2 )
         {
             goodImageList.push_back(imagelist[i*2]);
@@ -175,11 +177,12 @@ StereoCalib(const vector<string>& imagelist, Size boardSize,bool displayCorners 
                     CALIB_FIX_ASPECT_RATIO +
                     CALIB_ZERO_TANGENT_DIST +
                     CALIB_USE_INTRINSIC_GUESS +
-                    CALIB_SAME_FOCAL_LENGTH +
+//                    CALIB_SAME_FOCAL_LENGTH +
                     CALIB_RATIONAL_MODEL +
                     CALIB_FIX_K3 + CALIB_FIX_K4 + CALIB_FIX_K5,
                     TermCriteria(TermCriteria::COUNT+TermCriteria::EPS, 100, 1e-5) );
     cout << "done with RMS error=" << rms << endl;
+
 
 // CALIBRATION QUALITY CHECK
 // because the output fundamental matrix implicitly
@@ -228,9 +231,10 @@ StereoCalib(const vector<string>& imagelist, Size boardSize,bool displayCorners 
     stereoRectify(cameraMatrix[0], distCoeffs[0],
                   cameraMatrix[1], distCoeffs[1],
                   imageSize, R, T, R1, R2, P1, P2, Q,
+//                  0, -1, imageSize, &validRoi[0], &validRoi[1]);
                   CALIB_ZERO_DISPARITY, 1, imageSize, &validRoi[0], &validRoi[1]);
 
-    fs.open("extrinsics.yml", FileStorage::WRITE);
+    fs.open("./images/extrinsics.yml", FileStorage::WRITE);
     if( fs.isOpened() )
     {
         fs << "R" << R << "T" << T << "R1" << R1 << "R2" << R2 << "P1" << P1 << "P2" << P2 << "Q" << Q;
@@ -284,14 +288,14 @@ StereoCalib(const vector<string>& imagelist, Size boardSize,bool displayCorners 
     int w, h;
     if( !isVerticalStereo )
     {
-        sf = 600./MAX(imageSize.width, imageSize.height);
+        sf = 640./MAX(imageSize.width, imageSize.height);
         w = cvRound(imageSize.width*sf);
         h = cvRound(imageSize.height*sf);
         canvas.create(h, w*2, CV_8UC3);
     }
     else
     {
-        sf = 300./MAX(imageSize.width, imageSize.height);
+        sf = 480./MAX(imageSize.width, imageSize.height);
         w = cvRound(imageSize.width*sf);
         h = cvRound(imageSize.height*sf);
         canvas.create(h*2, w, CV_8UC3);
@@ -320,11 +324,14 @@ StereoCalib(const vector<string>& imagelist, Size boardSize,bool displayCorners 
         else
             for( j = 0; j < canvas.cols; j += 16 )
                 line(canvas, Point(j, 0), Point(j, canvas.rows), Scalar(0, 255, 0), 1, 8);
+
         imshow("rectified", canvas);
         char c = (char)waitKey();
         if( c == 27 || c == 'q' || c == 'Q' )
             break;
+
     }
+
 }
 
 
@@ -348,13 +355,15 @@ int main(int argc, char** argv)
     Size boardSize;
     string imagelistfn;
     bool showRectified;
-    cv::CommandLineParser parser(argc, argv, "{w|8|}{h|6|}{nr||}{help||}{@input|./images/stereo_calib.xml|}");
+    bool showCorner = false;
+    cv::CommandLineParser parser(argc, argv, "{sc|y|}{w|8|}{h|6|}{nr||}{help||}{@input|./images/stereo_calib.xml|}");
     if (parser.has("help"))
         return print_help();
     showRectified = !parser.has("nr");
     imagelistfn = parser.get<string>("@input");
     boardSize.width = parser.get<int>("w");
     boardSize.height = parser.get<int>("h");
+    if (parser.get<bool>("sc")) showCorner = true; 
     if (!parser.check())
     {
         parser.printErrors();
@@ -368,6 +377,6 @@ int main(int argc, char** argv)
         return print_help();
     }
 
-    StereoCalib(imagelist, boardSize, true, true, showRectified);
+    StereoCalib(imagelist, boardSize, showCorner, true, showRectified);
     return 0;
 }
