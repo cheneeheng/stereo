@@ -38,7 +38,7 @@ int main(int argc, char **argv)
 
   cvSetCaptureProperty(right_cam,CV_CAP_PROP_ISO_SPEED,800);
   cvSetCaptureProperty(right_cam,CV_CAP_PROP_EXPOSURE,300);
-  cvSetCaptureProperty(right_cam,CV_CAP_PROP_GAIN,500);
+  cvSetCaptureProperty(right_cam,CV_CAP_PROP_GAIN,450);
   cvSetCaptureProperty(right_cam,CV_CAP_PROP_FPS,120);
   cvSetCaptureProperty(right_cam,CV_CAP_PROP_MODE,4);
 

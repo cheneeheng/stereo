@@ -1,0 +1,36 @@
+XVISION  = $(HOME)/XVision2
+LIB	 = libvgps.a
+PROG     = vgps
+
+CXX	 = g++
+
+CXXFLAGS = -O6                  \
+           -pipe                \
+           -I$(XVISION)/include 
+
+
+L_OBJS   = Vgps.o 
+OBJS	 = main.o
+           
+
+LIBS	 = -L. -lvgps -L$(XVISION)/lib -lXVTools -lm 
+
+
+all: .depend lib $(OBJS)
+	$(CXX) -o $(PROG) $(OBJS) $(LIBS)
+
+lib: $(L_OBJS)
+	ar rv $(LIB) $(L_OBJS) 
+
+clean: ;	rm -f *.o 
+
+veryclean: clean
+	rm -f $(PROG) .depend  *~ 
+
+install: all
+	install -c $(PROG) $(HOME)/bin
+
+.depend: $(OBJS:.o=.cc)
+	$(CC) -M $(CXXFLAGS) $(OBJS:.o=.cc) > .depend 
+
+include .depend

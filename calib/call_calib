@@ -1,3 +1,0 @@
-#!/bin/bash
-
-./stereo_calib -w 8 -h 6 stereo_calib.xml

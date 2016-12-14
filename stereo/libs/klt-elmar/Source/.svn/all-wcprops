@@ -1,0 +1,125 @@
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/laser-sc/!svn/ver/804/programs/klt/Trunk/Source
+END
+stereo_util.c
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/laser-sc/!svn/ver/730/programs/klt/Trunk/Source/stereo_util.c
+END
+error.h
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/laser-sc/!svn/ver/8/programs/klt/Trunk/Source/error.h
+END
+klt.h
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/laser-sc/!svn/ver/710/programs/klt/Trunk/Source/klt.h
+END
+convolve.h
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/laser-sc/!svn/ver/177/programs/klt/Trunk/Source/convolve.h
+END
+stereo_util.h
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/laser-sc/!svn/ver/66/programs/klt/Trunk/Source/stereo_util.h
+END
+trackFeatures.c
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/laser-sc/!svn/ver/804/programs/klt/Trunk/Source/trackFeatures.c
+END
+pyramid.c
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/laser-sc/!svn/ver/321/programs/klt/Trunk/Source/pyramid.c
+END
+pyramid.h
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/laser-sc/!svn/ver/177/programs/klt/Trunk/Source/pyramid.h
+END
+base.h
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/laser-sc/!svn/ver/8/programs/klt/Trunk/Source/base.h
+END
+pnmio.c
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/laser-sc/!svn/ver/8/programs/klt/Trunk/Source/pnmio.c
+END
+selectGoodFeatures.c
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/laser-sc/!svn/ver/696/programs/klt/Trunk/Source/selectGoodFeatures.c
+END
+pnmio.h
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/laser-sc/!svn/ver/8/programs/klt/Trunk/Source/pnmio.h
+END
+klt_util.c
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/laser-sc/!svn/ver/372/programs/klt/Trunk/Source/klt_util.c
+END
+error.c
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/laser-sc/!svn/ver/8/programs/klt/Trunk/Source/error.c
+END
+writeFeatures.c
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/laser-sc/!svn/ver/423/programs/klt/Trunk/Source/writeFeatures.c
+END
+klt.c
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/laser-sc/!svn/ver/620/programs/klt/Trunk/Source/klt.c
+END
+convolve.c
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/laser-sc/!svn/ver/320/programs/klt/Trunk/Source/convolve.c
+END
+storeFeatures.c
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/laser-sc/!svn/ver/8/programs/klt/Trunk/Source/storeFeatures.c
+END
+klt_util.h
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/laser-sc/!svn/ver/730/programs/klt/Trunk/Source/klt_util.h
+END
+Makefile
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/laser-sc/!svn/ver/8/programs/klt/Trunk/Source/Makefile
+END

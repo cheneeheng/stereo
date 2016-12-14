@@ -1,0 +1,1 @@
+/home/chen/stereo/stereo/CMakeFiles/stereo.dir
